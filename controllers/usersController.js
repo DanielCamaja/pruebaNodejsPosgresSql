@@ -1,12 +1,12 @@
-// controllers/usersController.js
 import pool from "../db.js";
-import bcrypt from "bcryptjs";
-
+import bcrypt from "bcrypt";
 
 // Listar usuarios
 export async function listUsers(req, res) {
   try {
-    const result = await pool.query("SELECT id, nombre, apellido, email, estado, deleted_at FROM users ORDER BY id DESC");
+    const result = await pool.query(
+      "SELECT id, nombre, apellido, email, estado, deleted_at FROM users ORDER BY id DESC"
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: "Error al listar usuarios", error: err.message });
@@ -17,17 +17,13 @@ export async function listUsers(req, res) {
 export async function createUser(req, res) {
   try {
     const { nombre, apellido, email, estado, password } = req.body;
-
     if (!nombre || !apellido || !email || !password)
       return res.status(400).json({ message: "Todos los campos son obligatorios" });
 
     const exists = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (exists.rows.length > 0)
-      return res.status(409).json({ message: "El usuario ya existe" });
+    if (exists.rows.length > 0) return res.status(409).json({ message: "Usuario ya existe" });
 
-    const saltRounds = parseInt(process.env.SALT_ROUNDS || "10");
-    const hash = await bcrypt.hash(password, saltRounds);
-
+    const hash = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS));
     const result = await pool.query(
       "INSERT INTO users (nombre, apellido, email, estado, password_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id, nombre, apellido, email, estado, deleted_at",
       [nombre, apellido, email, estado || "activo", hash]
@@ -47,8 +43,7 @@ export async function updateUser(req, res) {
 
     let query, params;
     if (password) {
-      const saltRounds = parseInt(process.env.SALT_ROUNDS || "10");
-      const hash = await bcrypt.hash(password, saltRounds);
+      const hash = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS));
       query = "UPDATE users SET nombre=$1, apellido=$2, email=$3, estado=$4, password_hash=$5 WHERE id=$6 RETURNING *";
       params = [nombre, apellido, email, estado, hash, id];
     } else {
@@ -57,8 +52,7 @@ export async function updateUser(req, res) {
     }
 
     const result = await pool.query(query, params);
-    if (result.rows.length === 0)
-      return res.status(404).json({ message: "Usuario no encontrado" });
+    if (result.rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -72,8 +66,7 @@ export async function deleteUser(req, res) {
     const { id } = req.params;
     const result = await pool.query("UPDATE users SET deleted_at = NOW() WHERE id = $1 RETURNING id", [id]);
 
-    if (result.rows.length === 0)
-      return res.status(404).json({ message: "Usuario no encontrado" });
+    if (result.rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
 
     res.json({ message: "Usuario eliminado correctamente" });
   } catch (err) {
