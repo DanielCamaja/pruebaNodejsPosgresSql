@@ -4,7 +4,7 @@ const logger = require('../logger');
 
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS || '10', 10);
 
-// List users (active + include deleted flag)
+// Lista usuarios
 async function listUsers(req, res, next) {
   try {
     const result = await db.query('SELECT id, nombre, apellido, email, estado, deleted_at FROM users ORDER BY id DESC');
@@ -21,7 +21,7 @@ async function createUser(req, res, next) {
     if (!nombre || !apellido || !email || !password) {
       return res.status(400).json({ message: 'Faltan campos obligatorios' });
     }
-    // check exists
+    // si existen
     const exists = await db.query('SELECT id FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) return res.status(409).json({ message: 'Usuario ya existe' });
 
@@ -31,7 +31,7 @@ async function createUser(req, res, next) {
       [nombre, apellido, email, estado || 'active', hash]
     );
 
-    // emit socket update
+   
     const io = req.app.get('io');
     if (io) {
       const all = await db.query('SELECT id, nombre, apellido, email, estado, deleted_at FROM users ORDER BY id DESC');
@@ -51,7 +51,7 @@ async function updateUser(req, res, next) {
     const { nombre, apellido, email, estado, password } = req.body;
     if (!nombre || !apellido || !email) return res.status(400).json({ message: 'Campos requeridos faltan' });
 
-    // if password provided, hash
+    
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -64,7 +64,7 @@ async function updateUser(req, res, next) {
     const result = await db.query(q, params);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-    // emit socket update
+    
     const io = req.app.get('io');
     if (io) {
       const all = await db.query('SELECT id, nombre, apellido, email, estado, deleted_at FROM users ORDER BY id DESC');
@@ -78,7 +78,7 @@ async function updateUser(req, res, next) {
   }
 }
 
-// delete: implement soft delete (set deleted_at)
+// delete
 async function deleteUser(req, res, next) {
   try {
     const { id } = req.params;
